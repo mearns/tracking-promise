@@ -1,18 +1,24 @@
 {
-  "name": "PROJECT-NAME",
+  "name": "tracking-promise",
   "version": "0.1.0",
-  "description": "$PROJECT_DESCRIPTION$",
-  "keywords": [],
+  "description": "A JavaScript library for tracking the success/failure of a promise without rejecting",
+  "keywords": [
+    "promise",
+    "promises",
+    "async",
+    "await",
+    "async/await"
+  ],
   "author": "Brian Mearns <mearns.b@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mearns/PROJECT-NAME.git"
+    "url": "git+https://github.com/mearns/tracking-promise.git"
   },
   "bugs": {
-    "url": "https://github.com/mearns/PROJECT-NAME/issues"
+    "url": "https://github.com/mearns/tracking-promise/issues"
   },
-  "homepage": "https://github.com/mearns/PROJECT-NAME#readme",
+  "homepage": "https://github.com/mearns/tracking-promise#readme",
   "engines": {
     "node": "^10.9.0"
   },
@@ -37,6 +43,7 @@
   },
   "devDependencies": {
     "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
     "eslint": "^5.16.0",
     "eslint-config-prettier": "^4.3.0",
     "eslint-config-standard": "^12.0.0",
@@ -54,5 +61,7 @@
     "sinon": "^7.3.2",
     "sinon-chai": "^3.3.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "extrinsic-promises": "^2.1.0"
+  }
 }
