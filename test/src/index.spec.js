@@ -6,441 +6,344 @@ const track = require("../../src/index");
 
 // Support
 
-// Your own custom test utilities.
-// const testUtils = require("../test-utils");
-
 // assertions library
 const chai = require("chai");
-const { expect } = chai;
 chai.use(require("chai-as-promised"));
 
-// mocks and stubs
-// const sinon = require("sinon");
+class SubjectExpectations {
+    constructor(subject) {
+        Object.defineProperty(this, "expect", {
+            get() {
+                return chai.expect(subject);
+            }
+        });
+    }
 
-// chai plugin for assertino on sinon stuff
-// const sinonChai = require("sinon-chai");
-// chai.use(sinonChai);
+    toBeFinished() {
+        this.expect.to.haveOwnProperty("finished").which.is.true;
+        return this;
+    }
+
+    toNotBeFinished() {
+        this.expect.to.haveOwnProperty("finished").which.is.false;
+        return this;
+    }
+
+    toHaveSucceeded() {
+        this.expect.to.haveOwnProperty("failed").which.is.false;
+        return this;
+    }
+
+    toHaveFailed() {
+        this.expect.to.haveOwnProperty("failed").which.is.true;
+        return this;
+    }
+
+    toHaveFailedUndefined() {
+        this.expect.to.haveOwnProperty("failed").which.is.undefined;
+        return this;
+    }
+
+    toBeSynchronous() {
+        this.expect.to.haveOwnProperty("synchronous").which.is.true;
+        return this;
+    }
+
+    toNotBeSynchronous() {
+        this.expect.to.haveOwnProperty("synchronous").which.is.false;
+        return this;
+    }
+
+    valueToBe(testValue) {
+        this.expect.to
+            .haveOwnProperty("value")
+            .which.satisfies(val => Object.is(val, testValue));
+        return this;
+    }
+
+    toHaveValueUndefined() {
+        this.expect.to.haveOwnProperty("value").which.is.undefined;
+        return this;
+    }
+
+    errorToBe(testError) {
+        this.expect.to
+            .haveOwnProperty("error")
+            .which.satisfies(val => Object.is(val, testError));
+        return this;
+    }
+
+    toHaveErrorUndefined() {
+        this.expect.to.haveOwnProperty("error").which.is.undefined;
+        return this;
+    }
+}
+
+class Expectations {
+    constructor(given) {
+        this.tracker = new SubjectExpectations(given.tracker);
+        this.withResult = async func => {
+            const result = await given.tracker;
+            func(new SubjectExpectations(result));
+        };
+    }
+}
 
 describe("tracking-promise", () => {
-    it("with a function that returns synchronously", async () => {
-        const testValue = {};
-        const tracker = track(() => testValue);
-
-        expect(
-            tracker,
-            "expect tracker fields to be set upon return"
-        ).to.include({
-            finished: true,
-            failed: false,
-            synchronous: true,
-            value: testValue
-        });
-
-        expect(
-            tracker.value,
-            "expect tracker.value to be identical to the returned value"
-        ).to.satisfy(val => Object.is(val, testValue));
-
-        expect(tracker.error, "expect tracker.error to be undefined").to.be
-            .undefined;
-
-        const result = await tracker;
-        expect(
-            result,
-            "expect tracker to be a promise that fulfills with the expected object"
-        ).to.deep.equal({
-            failed: false,
-            synchronous: true,
-            error: undefined,
-            value: testValue
-        });
-
-        expect(
-            result.value,
-            "expect result.value to be identical to the returned value"
-        ).to.satisfy(val => Object.is(val, testValue));
-    });
-
-    it("with a function that throws synchronously", async () => {
-        const testError = new Error("test error");
-        const tracker = track(() => {
-            throw testError;
-        });
-
-        expect(
-            tracker,
-            "expect tracker fields to be set upon return"
-        ).to.include({
-            finished: true,
-            failed: true,
-            synchronous: true,
-            error: testError
-        });
-
-        expect(
-            tracker.error,
-            "expect tracker.error to be identical to the thrown error"
-        ).to.satisfy(val => Object.is(val, testError));
-
-        expect(tracker.value, "expect tracker.value to be undefined").to.be
-            .undefined;
-
-        const result = await tracker;
-        expect(
-            result,
-            "expect tracker to be a promise that fulfills with the expected object"
-        ).to.deep.equal({
-            failed: true,
-            synchronous: true,
-            error: testError,
-            value: undefined
-        });
-
-        expect(
-            result.error,
-            "expect result.error to be identical to the thrown error"
-        ).to.satisfy(val => Object.is(val, testError));
-    });
-
-    it("with a function that returns a promise that fulfills", async () => {
-        const testValue = {};
-        const tracker = track(() => Promise.resolve(testValue));
-
-        expect(
-            tracker,
-            "expect tracker.finished to be false upon return"
-        ).to.haveOwnProperty("finished").that.is.false;
-
-        expect(
-            tracker,
-            "expect tracker's synchronous field to be set upon return"
-        ).to.haveOwnProperty("synchronous").that.is.false;
-
-        expect(
-            tracker.failed,
-            "expect tracker's failed field is not set upon return"
-        ).to.be.undefined;
-
-        expect(
-            tracker.value,
-            "expect tracker's value field is not set upon return"
-        ).to.be.undefined;
-
-        expect(
-            tracker.error,
-            "expect tracker's error field is not set upon return"
-        ).to.be.undefined;
-
-        const result = await tracker;
-
-        expect(
-            tracker,
-            "expect tracker fields to be set upon settling"
-        ).to.include({
-            finished: true,
-            failed: false,
-            synchronous: false,
-            value: testValue
-        });
-
-        expect(
-            tracker.value,
-            "expect tracker.value to be identical to the returned value"
-        ).to.satisfy(val => Object.is(val, testValue));
-
-        expect(tracker.error, "expect tracker.error to be undefined").to.be
-            .undefined;
-
-        expect(
-            result,
-            "expect tracker to be a promise that fulfills with the expected object"
-        ).to.deep.equal({
-            failed: false,
-            synchronous: false,
-            error: undefined,
-            value: testValue
-        });
-
-        expect(
-            result.value,
-            "expect result.value to be identical to the returned value"
-        ).to.satisfy(val => Object.is(val, testValue));
-    });
-
-    it("with a function that returns a promise that rejects", async () => {
-        const testError = new Error("test error");
-        const tracker = track(() => Promise.reject(testError));
-
-        expect(
-            tracker,
-            "expect tracker.finished to be false upon return"
-        ).to.haveOwnProperty("finished").that.is.false;
-
-        expect(
-            tracker,
-            "expect tracker's synchronous field to be set upon return"
-        ).to.haveOwnProperty("synchronous").that.is.false;
-
-        expect(
-            tracker.failed,
-            "expect tracker's failed field is not set upon return"
-        ).to.be.undefined;
-
-        expect(
-            tracker.value,
-            "expect tracker's value field is not set upon return"
-        ).to.be.undefined;
-
-        expect(
-            tracker.error,
-            "expect tracker's error field is not set upon return"
-        ).to.be.undefined;
-
-        const result = await tracker;
-
-        expect(
-            tracker,
-            "expect tracker fields to be set upon settling"
-        ).to.include({
-            finished: true,
-            failed: true,
-            synchronous: false,
-            error: testError
-        });
-
-        expect(
-            tracker.error,
-            "expect tracker.error to be identical to the thrown error"
-        ).to.satisfy(val => Object.is(val, testError));
-
-        expect(tracker.value, "expect tracker.value to be undefined").to.be
-            .undefined;
-
-        expect(
-            result,
-            "expect tracker to be a promise that fulfills with the expected object"
-        ).to.deep.equal({
-            failed: true,
-            synchronous: false,
-            error: testError,
-            value: undefined
-        });
-
-        expect(
-            result.error,
-            "expect result.error to be identical to the thrown error"
-        ).to.satisfy(val => Object.is(val, testError));
-    });
-
-    it("with a non-promise value", async () => {
-        const testValue = {};
-        const tracker = track(testValue);
-
-        expect(
-            tracker,
-            "expect tracker fields to be set upon return"
-        ).to.include({
-            finished: true,
-            failed: false,
-            synchronous: true,
-            value: testValue
-        });
-
-        expect(
-            tracker.value,
-            "expect tracker.value to be identical to the returned value"
-        ).to.satisfy(val => Object.is(val, testValue));
-
-        expect(tracker.error, "expect tracker.error to be undefined").to.be
-            .undefined;
-
-        const result = await tracker;
-        expect(
-            result,
-            "expect tracker to be a promise that fulfills with the expected object"
-        ).to.deep.equal({
-            failed: false,
-            synchronous: true,
-            error: undefined,
-            value: testValue
-        });
-
-        expect(
-            result.value,
-            "expect result.value to be identical to the returned value"
-        ).to.satisfy(val => Object.is(val, testValue));
-    });
-
-    it("with a promise that fulfills", async () => {
-        const testValue = {};
-        const tracker = track(Promise.resolve(testValue));
-
-        expect(
-            tracker,
-            "expect tracker.finished to be false upon return"
-        ).to.haveOwnProperty("finished").that.is.false;
-
-        expect(
-            tracker,
-            "expect tracker's synchronous field to be set upon return"
-        ).to.haveOwnProperty("synchronous").that.is.false;
-
-        expect(
-            tracker.failed,
-            "expect tracker's failed field is not set upon return"
-        ).to.be.undefined;
-
-        expect(
-            tracker.value,
-            "expect tracker's value field is not set upon return"
-        ).to.be.undefined;
-
-        expect(
-            tracker.error,
-            "expect tracker's error field is not set upon return"
-        ).to.be.undefined;
-
-        const result = await tracker;
-
-        expect(
-            tracker,
-            "expect tracker fields to be set upon settling"
-        ).to.include({
-            finished: true,
-            failed: false,
-            synchronous: false,
-            value: testValue
-        });
-
-        expect(
-            tracker.value,
-            "expect tracker.value to be identical to the returned value"
-        ).to.satisfy(val => Object.is(val, testValue));
-
-        expect(tracker.error, "expect tracker.error to be undefined").to.be
-            .undefined;
-
-        expect(
-            result,
-            "expect tracker to be a promise that fulfills with the expected object"
-        ).to.deep.equal({
-            failed: false,
-            synchronous: false,
-            error: undefined,
-            value: testValue
-        });
-
-        expect(
-            result.value,
-            "expect result.value to be identical to the returned value"
-        ).to.satisfy(val => Object.is(val, testValue));
-    });
-
-    it("with a promise that rejects", async () => {
-        const testError = new Error("test error");
-        const tracker = track(Promise.reject(testError));
-
-        expect(
-            tracker,
-            "expect tracker.finished to be false upon return"
-        ).to.haveOwnProperty("finished").that.is.false;
-
-        expect(
-            tracker,
-            "expect tracker's synchronous field to be set upon return"
-        ).to.haveOwnProperty("synchronous").that.is.false;
-
-        expect(
-            tracker.failed,
-            "expect tracker's failed field is not set upon return"
-        ).to.be.undefined;
-
-        expect(
-            tracker.value,
-            "expect tracker's value field is not set upon return"
-        ).to.be.undefined;
-
-        expect(
-            tracker.error,
-            "expect tracker's error field is not set upon return"
-        ).to.be.undefined;
-
-        const result = await tracker;
-
-        expect(
-            tracker,
-            "expect tracker fields to be set upon settling"
-        ).to.include({
-            finished: true,
-            failed: true,
-            synchronous: false,
-            error: testError
-        });
-
-        expect(
-            tracker.error,
-            "expect tracker.error to be identical to the thrown error"
-        ).to.satisfy(val => Object.is(val, testError));
-
-        expect(tracker.value, "expect tracker.value to be undefined").to.be
-            .undefined;
-
-        expect(
-            result,
-            "expect tracker to be a promise that fulfills with the expected object"
-        ).to.deep.equal({
-            failed: true,
-            synchronous: false,
-            error: testError,
-            value: undefined
-        });
-
-        expect(
-            result.error,
-            "expect result.error to be identical to the thrown error"
-        ).to.satisfy(val => Object.is(val, testError));
-    });
-
-    it("with a thenable that throws on registration", async () => {
-        const testError = new Error("test error");
-        const badThenable = {
-            then: () => {
-                throw testError;
+    [
+        [
+            "with a function that returns synchronously",
+            testValue => () => testValue
+        ],
+        ["with a non-promise non-function value", testValue => testValue]
+    ].forEach(([desc, getTracked]) => {
+        describe(desc, async () => {
+            function setup() {
+                const testValue = {};
+                const tracker = track(getTracked(testValue));
+                const expect = new Expectations({
+                    tracker
+                });
+                return {
+                    testValue,
+                    tracker,
+                    expect
+                };
             }
-        };
 
-        try {
-            track(badThenable);
-        } catch (error) {
-            expect(error)
-                .to.haveOwnProperty("cause")
-                .that.satisfies(cause => Object.is(cause, testError));
-            return;
-        }
-        throw new Error("Expected track to throw");
+            it("should have tracker fields set as expected upon returning synchronously from track function", () => {
+                const { expect, testValue } = setup();
+                expect.tracker.toBeFinished();
+                expect.tracker.toHaveSucceeded();
+                expect.tracker.toBeSynchronous();
+                expect.tracker.valueToBe(testValue);
+                expect.tracker.toHaveErrorUndefined();
+            });
+
+            it("should have tracker fields set as expected upon settling", async () => {
+                const { expect, tracker, testValue } = setup();
+                await tracker;
+                expect.tracker.toBeFinished();
+                expect.tracker.toHaveSucceeded();
+                expect.tracker.toBeSynchronous();
+                expect.tracker.valueToBe(testValue);
+                expect.tracker.toHaveErrorUndefined();
+            });
+
+            it("should fulfill to a result object with fields as expected", async () => {
+                const { expect, testValue } = setup();
+                await expect.withResult(expectResult => {
+                    expectResult.toHaveSucceeded();
+                    expectResult.toBeSynchronous();
+                    expectResult.valueToBe(testValue);
+                    expectResult.toHaveErrorUndefined();
+                });
+            });
+        });
     });
 
-    it("with a function that returns a thenable that throws on registration", async () => {
-        const testError = new Error("test error");
-        const badThenable = {
-            then: () => {
-                throw testError;
+    [
+        [
+            "with a function that returns a promise that fulfills",
+            testValue => () => Promise.resolve(testValue)
+        ],
+        [
+            "with a promise that fulfills",
+            testValue => Promise.resolve(testValue)
+        ]
+    ].forEach(([desc, getTracked]) => {
+        describe(desc, async () => {
+            function setup() {
+                const testValue = {};
+                const tracker = track(getTracked(testValue));
+                const expect = new Expectations({
+                    tracker
+                });
+                return {
+                    testValue,
+                    tracker,
+                    expect
+                };
             }
-        };
 
-        try {
-            track(() => badThenable);
-        } catch (error) {
-            expect(error)
-                .to.haveOwnProperty("cause")
-                .that.satisfies(cause => Object.is(cause, testError));
-            return;
-        }
-        throw new Error("Expected track to throw");
+            it("should have tracker fields set as expected upon returning synchronously from track function", () => {
+                const { expect, testValue } = setup();
+                expect.tracker.toNotBeFinished();
+                expect.tracker.toHaveFailedUndefined();
+                expect.tracker.toNotBeSynchronous();
+                expect.tracker.toHaveValueUndefined(testValue);
+                expect.tracker.toHaveErrorUndefined();
+            });
+
+            it("should have tracker fields set as expected upon settling", async () => {
+                const { expect, tracker, testValue } = setup();
+                await tracker;
+                expect.tracker.toBeFinished();
+                expect.tracker.toHaveSucceeded();
+                expect.tracker.toNotBeSynchronous();
+                expect.tracker.valueToBe(testValue);
+                expect.tracker.toHaveErrorUndefined();
+            });
+
+            it("should fulfill to a result object with fields as expected", async () => {
+                const { expect, testValue } = setup();
+                await expect.withResult(expectResult => {
+                    expectResult.toHaveSucceeded();
+                    expectResult.toNotBeSynchronous();
+                    expectResult.valueToBe(testValue);
+                    expectResult.toHaveErrorUndefined();
+                });
+            });
+        });
     });
 
-    it("with a thenable that does not return a thenable on registration");
-    it(
-        "with a function that returns a thenable that does not return a thenable registration"
-    );
+    describe("with a function that throws synchronously", async () => {
+        function setup() {
+            const testError = new Error("test-error");
+            const tracker = track(() => {
+                throw testError;
+            });
+            const expect = new Expectations({
+                tracker
+            });
+            return {
+                testError,
+                tracker,
+                expect
+            };
+        }
+
+        it("should have tracker fields set as expected upon returning synchronously from track function", () => {
+            const { expect, testError } = setup();
+            expect.tracker.toBeFinished();
+            expect.tracker.toHaveFailed();
+            expect.tracker.toBeSynchronous();
+            expect.tracker.toHaveValueUndefined();
+            expect.tracker.errorToBe(testError);
+        });
+
+        it("should have tracker fields set as expected upon settling", async () => {
+            const { expect, tracker, testError } = setup();
+            await tracker;
+            expect.tracker.toBeFinished();
+            expect.tracker.toHaveFailed();
+            expect.tracker.toBeSynchronous();
+            expect.tracker.toHaveValueUndefined();
+            expect.tracker.errorToBe(testError);
+        });
+
+        it("should fulfill to a result object with fields as expected", async () => {
+            const { expect, testError } = setup();
+            await expect.withResult(expectResult => {
+                expectResult.toHaveFailed();
+                expectResult.toBeSynchronous();
+                expectResult.toHaveValueUndefined();
+                expectResult.errorToBe(testError);
+            });
+        });
+    });
+
+    [
+        [
+            "with a function that returns a promise that rejects",
+            testError => () => Promise.reject(testError)
+        ],
+        ["with a promise that rejects", testError => Promise.reject(testError)]
+    ].forEach(([desc, getTracked]) => {
+        describe(desc, async () => {
+            function setup() {
+                const testError = new Error("test-error");
+                const tracker = track(getTracked(testError));
+                const expect = new Expectations({
+                    tracker
+                });
+                return {
+                    testError,
+                    tracker,
+                    expect
+                };
+            }
+
+            it("should have tracker fields set as expected upon returning synchronously from track function", () => {
+                const { expect, testValue } = setup();
+                expect.tracker.toNotBeFinished();
+                expect.tracker.toHaveFailedUndefined();
+                expect.tracker.toNotBeSynchronous();
+                expect.tracker.toHaveValueUndefined(testValue);
+                expect.tracker.toHaveErrorUndefined();
+            });
+
+            it("should have tracker fields set as expected upon settling", async () => {
+                const { expect, tracker, testError } = setup();
+                await tracker;
+                expect.tracker.toBeFinished();
+                expect.tracker.toHaveFailed();
+                expect.tracker.toNotBeSynchronous();
+                expect.tracker.toHaveValueUndefined();
+                expect.tracker.errorToBe(testError);
+            });
+
+            it("should fulfill to a result object with fields as expected", async () => {
+                const { expect, testError } = setup();
+                await expect.withResult(expectResult => {
+                    expectResult.toHaveFailed();
+                    expectResult.toNotBeSynchronous();
+                    expectResult.toHaveValueUndefined();
+                    expectResult.errorToBe(testError);
+                });
+            });
+        });
+    });
+
+    [
+        [
+            "when tracking a function that returns a thennable that throws on registration",
+            testError => () => ({
+                then() {
+                    throw testError;
+                }
+            })
+        ],
+        [
+            "when tracking a thennable that throws on registration",
+            testError => ({
+                then() {
+                    throw testError;
+                }
+            })
+        ]
+    ].forEach(([desc, getTracked]) => {
+        describe(desc, () => {
+            it("should throw synchronously", () => {
+                const testError = new Error("test-error");
+                chai.expect(() => track(getTracked(testError))).to.throw;
+            });
+
+            it("should throw an error with name InvalidThennableError", () => {
+                const testError = new Error("test-error");
+                try {
+                    track(getTracked(testError));
+                } catch (error) {
+                    chai.expect(error)
+                        .to.haveOwnProperty("name")
+                        .which.equals("InvalidThennableError");
+                    return;
+                }
+                throw new Error("Should have thrown an error");
+            });
+
+            it("should throw an error with the cause set to the error thrown by the thennable", () => {
+                const testError = new Error("test-error");
+                try {
+                    track(getTracked(testError));
+                } catch (error) {
+                    chai.expect(error)
+                        .to.haveOwnProperty("cause")
+                        .which.satisfies(val => Object.is(val, testError));
+                    return;
+                }
+                throw new Error("Should have thrown an error");
+            });
+        });
+    });
 });

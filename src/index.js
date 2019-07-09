@@ -15,6 +15,9 @@ module.exports = function track(what) {
     const p = new ExtrinsicPromise();
     const tracker = p.hide();
     tracker.finished = false;
+    tracker.value = undefined;
+    tracker.error = undefined;
+    tracker.failed = undefined;
     let syncReturn;
     try {
         syncReturn = typeof what === "function" ? what() : what;
@@ -55,6 +58,7 @@ module.exports = function track(what) {
                 `Returned value looked like a thennable, but threw the following error when registering handlers: ${error.message ||
                     error}`
             );
+            customError.name = "InvalidThennableError";
             customError.cause = error;
             throw customError;
         }
