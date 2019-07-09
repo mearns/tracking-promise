@@ -10,6 +10,9 @@ const track = require("../../src/index");
 const chai = require("chai");
 chai.use(require("chai-as-promised"));
 
+// Mocking library
+const sinon = require("sinon");
+
 class SubjectExpectations {
     constructor(subject) {
         Object.defineProperty(this, "expect", {
@@ -21,6 +24,21 @@ class SubjectExpectations {
 
     toBeFinished() {
         this.expect.to.haveOwnProperty("finished").which.is.true;
+        return this;
+    }
+
+    toBeTimedout() {
+        this.expect.to.haveOwnProperty("timedout").which.is.true;
+        return this;
+    }
+
+    toNotBeTimedout() {
+        this.expect.to.haveOwnProperty("timedout").which.is.false;
+        return this;
+    }
+
+    toHaveTimedoutUndefined() {
+        this.expect.to.haveOwnProperty("timedout").which.is.undefined;
         return this;
     }
 
@@ -118,6 +136,7 @@ describe("tracking-promise", () => {
                 expect.tracker.toBeSynchronous();
                 expect.tracker.valueToBe(testValue);
                 expect.tracker.toHaveErrorUndefined();
+                expect.tracker.toNotBeTimedout();
             });
 
             it("should have tracker fields set as expected upon settling", async () => {
@@ -128,6 +147,7 @@ describe("tracking-promise", () => {
                 expect.tracker.toBeSynchronous();
                 expect.tracker.valueToBe(testValue);
                 expect.tracker.toHaveErrorUndefined();
+                expect.tracker.toNotBeTimedout();
             });
 
             it("should fulfill to a result object with fields as expected", async () => {
@@ -137,6 +157,7 @@ describe("tracking-promise", () => {
                     expectResult.toBeSynchronous();
                     expectResult.valueToBe(testValue);
                     expectResult.toHaveErrorUndefined();
+                    expectResult.toNotBeTimedout();
                 });
             });
         });
@@ -167,12 +188,13 @@ describe("tracking-promise", () => {
             }
 
             it("should have tracker fields set as expected upon returning synchronously from track function", () => {
-                const { expect, testValue } = setup();
+                const { expect } = setup();
                 expect.tracker.toNotBeFinished();
                 expect.tracker.toHaveFailedUndefined();
                 expect.tracker.toNotBeSynchronous();
-                expect.tracker.toHaveValueUndefined(testValue);
+                expect.tracker.toHaveValueUndefined();
                 expect.tracker.toHaveErrorUndefined();
+                expect.tracker.toHaveTimedoutUndefined();
             });
 
             it("should have tracker fields set as expected upon settling", async () => {
@@ -183,6 +205,7 @@ describe("tracking-promise", () => {
                 expect.tracker.toNotBeSynchronous();
                 expect.tracker.valueToBe(testValue);
                 expect.tracker.toHaveErrorUndefined();
+                expect.tracker.toNotBeTimedout();
             });
 
             it("should fulfill to a result object with fields as expected", async () => {
@@ -192,6 +215,7 @@ describe("tracking-promise", () => {
                     expectResult.toNotBeSynchronous();
                     expectResult.valueToBe(testValue);
                     expectResult.toHaveErrorUndefined();
+                    expectResult.toNotBeTimedout();
                 });
             });
         });
@@ -220,6 +244,7 @@ describe("tracking-promise", () => {
             expect.tracker.toBeSynchronous();
             expect.tracker.toHaveValueUndefined();
             expect.tracker.errorToBe(testError);
+            expect.tracker.toNotBeTimedout();
         });
 
         it("should have tracker fields set as expected upon settling", async () => {
@@ -230,6 +255,7 @@ describe("tracking-promise", () => {
             expect.tracker.toBeSynchronous();
             expect.tracker.toHaveValueUndefined();
             expect.tracker.errorToBe(testError);
+            expect.tracker.toNotBeTimedout();
         });
 
         it("should fulfill to a result object with fields as expected", async () => {
@@ -239,6 +265,7 @@ describe("tracking-promise", () => {
                 expectResult.toBeSynchronous();
                 expectResult.toHaveValueUndefined();
                 expectResult.errorToBe(testError);
+                expectResult.toNotBeTimedout();
             });
         });
     });
@@ -265,12 +292,13 @@ describe("tracking-promise", () => {
             }
 
             it("should have tracker fields set as expected upon returning synchronously from track function", () => {
-                const { expect, testValue } = setup();
+                const { expect } = setup();
                 expect.tracker.toNotBeFinished();
                 expect.tracker.toHaveFailedUndefined();
                 expect.tracker.toNotBeSynchronous();
-                expect.tracker.toHaveValueUndefined(testValue);
+                expect.tracker.toHaveValueUndefined();
                 expect.tracker.toHaveErrorUndefined();
+                expect.tracker.toHaveTimedoutUndefined();
             });
 
             it("should have tracker fields set as expected upon settling", async () => {
@@ -281,6 +309,7 @@ describe("tracking-promise", () => {
                 expect.tracker.toNotBeSynchronous();
                 expect.tracker.toHaveValueUndefined();
                 expect.tracker.errorToBe(testError);
+                expect.tracker.toNotBeTimedout();
             });
 
             it("should fulfill to a result object with fields as expected", async () => {
@@ -290,6 +319,123 @@ describe("tracking-promise", () => {
                     expectResult.toNotBeSynchronous();
                     expectResult.toHaveValueUndefined();
                     expectResult.errorToBe(testError);
+                    expectResult.toNotBeTimedout();
+                });
+            });
+        });
+    });
+
+    [
+        [
+            "when tracking a promise the fulfills after the given timeout",
+            delay => new Promise(resolve => setTimeout(resolve, delay))
+        ],
+        [
+            "when tracking a promise the rejects after the given timeout",
+            delay => {
+                return new Promise((resolve, reject) =>
+                    setTimeout(() => {
+                        reject(new Error("test-delayed-error"));
+                    }, delay)
+                );
+            }
+        ]
+    ].forEach(([desc, getTracked]) => {
+        describe(desc, () => {
+            let clock;
+
+            beforeEach(() => {
+                clock = null;
+            });
+
+            afterEach(() => {
+                if (clock) {
+                    clock.restore();
+                }
+            });
+
+            function setup() {
+                const TIMEOUT = 1;
+                const DELAY = TIMEOUT + 1;
+                const tracker = track(getTracked(DELAY), TIMEOUT);
+                const expect = new Expectations({
+                    tracker
+                });
+                return {
+                    tracker,
+                    expect,
+                    advancePastTimeout: () => {
+                        clock.tick(TIMEOUT);
+                    },
+                    advancePastDelay: () => {
+                        clock.tick(DELAY);
+                    },
+                    wait: async () => {
+                        const p = new Promise(resolve => setImmediate(resolve));
+                        if (clock) {
+                            clock.next();
+                        }
+                        return p;
+                    }
+                };
+            }
+
+            it("should have tracker fields set as expected upon returning synchronously from track function", () => {
+                const { expect } = setup();
+                expect.tracker.toNotBeFinished();
+                expect.tracker.toHaveFailedUndefined();
+                expect.tracker.toNotBeSynchronous();
+                expect.tracker.toHaveValueUndefined();
+                expect.tracker.toHaveErrorUndefined();
+                expect.tracker.toHaveTimedoutUndefined();
+            });
+
+            it("should have tracker fields set as expected upon settling", async () => {
+                clock = sinon.useFakeTimers();
+                const {
+                    expect,
+                    tracker,
+                    wait,
+                    advancePastDelay,
+                    advancePastTimeout
+                } = setup();
+                const verify = () => {
+                    expect.tracker.toBeFinished();
+                    expect.tracker.toHaveFailedUndefined();
+                    expect.tracker.toNotBeSynchronous();
+                    expect.tracker.toHaveValueUndefined();
+                    expect.tracker.toHaveErrorUndefined();
+                    expect.tracker.toBeTimedout();
+                };
+                advancePastTimeout();
+                await tracker;
+                verify();
+                advancePastDelay();
+                await wait();
+                verify();
+            });
+
+            it("should fulfill to a result object with fields as expected", async () => {
+                clock = sinon.useFakeTimers();
+                const {
+                    expect,
+                    wait,
+                    advancePastDelay,
+                    advancePastTimeout
+                } = setup();
+                advancePastTimeout();
+                await expect.withResult(async expectResult => {
+                    const verify = () => {
+                        expectResult.toHaveFailedUndefined();
+                        expectResult.toNotBeSynchronous();
+                        expectResult.toHaveValueUndefined();
+                        expectResult.toHaveErrorUndefined();
+                        expectResult.toBeTimedout();
+                    };
+                    verify();
+                    advancePastDelay();
+                    await wait();
+                    verify();
                 });
             });
         });
