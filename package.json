@@ -42,6 +42,7 @@
     }
   },
   "devDependencies": {
+    "bluebird": "^3.5.5",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "eslint": "^5.16.0",
@@ -54,6 +55,7 @@
     "eslint-plugin-standard": "^4.0.0",
     "husky": "^2.3.0",
     "mocha": "^6.1.4",
+    "mochawesome": "^4.0.1",
     "node": "^10.9.0",
     "nyc": "^14.1.1",
     "prettier": "^1.17.1",

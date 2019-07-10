@@ -5,6 +5,7 @@
 const track = require("../../src/index");
 
 // Support
+const bluebird = require("bluebird");
 
 // assertions library
 const chai = require("chai");
@@ -327,11 +328,11 @@ describe("tracking-promise", () => {
 
     [
         [
-            "when tracking a promise the fulfills after the given timeout",
+            "when tracking a promise that fulfills after the given timeout",
             delay => new Promise(resolve => setTimeout(resolve, delay))
         ],
         [
-            "when tracking a promise the rejects after the given timeout",
+            "when tracking a promise that rejects after the given timeout",
             delay => {
                 return new Promise((resolve, reject) =>
                     setTimeout(() => {
@@ -366,14 +367,16 @@ describe("tracking-promise", () => {
                     expect,
                     advancePastTimeout: () => {
                         clock.tick(TIMEOUT);
+                        clock.next();
                     },
                     advancePastDelay: () => {
                         clock.tick(DELAY);
+                        clock.next();
                     },
                     wait: async () => {
                         const p = new Promise(resolve => setImmediate(resolve));
                         if (clock) {
-                            clock.next();
+                            clock.runAll();
                         }
                         return p;
                     }
@@ -489,6 +492,45 @@ describe("tracking-promise", () => {
                     return;
                 }
                 throw new Error("Should have thrown an error");
+            });
+        });
+    });
+
+    describe("with long-running asynchronous jobs", () => {
+        let clock;
+
+        beforeEach(() => {
+            clock = null;
+        });
+
+        afterEach(() => {
+            if (clock) {
+                clock.restore();
+            }
+        });
+
+        [
+            ["builtin promises", Promise],
+            ["bluebird promises", bluebird]
+        ].forEach(([desc, P]) => {
+            [
+                ["fulfills", resolve => resolve],
+                ["rejects", (resolve, reject) => reject]
+            ].forEach(([action, getSettler]) => {
+                it(`should timeout as expected when the promise ${action} using ${desc}`, async () => {
+                    clock = sinon.useFakeTimers();
+                    const TIMEOUT = 1;
+                    const DELAY = TIMEOUT + 1;
+                    const tracked = () => {
+                        return new P((resolve, reject) => {
+                            clock.tick(DELAY);
+                            getSettler(resolve, reject)("test-value");
+                        });
+                    };
+                    const tracker = track(tracked, TIMEOUT);
+                    await tracker;
+                    chai.expect(tracker.timedout).to.be.true;
+                });
             });
         });
     });

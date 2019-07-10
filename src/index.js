@@ -1,6 +1,6 @@
 const ExtrinsicPromise = require("extrinsic-promises");
 
-const complete = (p, tracker) => {
+const complete = (p, tracker, timer) => {
     tracker.finished = true;
     p.fulfill({
         failed: tracker.failed,
@@ -9,18 +9,13 @@ const complete = (p, tracker) => {
         error: tracker.error,
         value: tracker.value
     });
+    if (timer) {
+        clearTimeout(timer);
+    }
     return tracker;
 };
 
 const TIMEOUT = Symbol("timeout");
-
-function getTimeoutPromise(ms) {
-    const p = new ExtrinsicPromise();
-    setTimeout(() => {
-        p.fulfill(TIMEOUT);
-    }, ms);
-    return p;
-}
 
 module.exports = function track(what, timeout) {
     const p = new ExtrinsicPromise();
@@ -31,6 +26,14 @@ module.exports = function track(what, timeout) {
     tracker.failed = undefined;
     tracker.timedout = undefined;
     let syncReturn;
+    const race = new ExtrinsicPromise();
+    let timer =
+        timeout == null
+            ? null
+            : setTimeout(() => {
+                  timer = null;
+                  race.fulfill(TIMEOUT);
+              }, timeout);
     try {
         syncReturn = typeof what === "function" ? what() : what;
     } catch (syncError) {
@@ -38,7 +41,7 @@ module.exports = function track(what, timeout) {
         tracker.synchronous = true;
         tracker.error = syncError;
         tracker.timedout = false;
-        return complete(p, tracker);
+        return complete(p, tracker, timer);
     }
     if (
         syncReturn === null ||
@@ -49,14 +52,16 @@ module.exports = function track(what, timeout) {
         tracker.synchronous = true;
         tracker.value = syncReturn;
         tracker.timedout = false;
-        return complete(p, tracker);
+        return complete(p, tracker, timer);
     } else {
         tracker.synchronous = false;
         const returnedPromise = syncReturn;
         const promise =
             timeout == null
                 ? returnedPromise
-                : Promise.race([returnedPromise, getTimeoutPromise(timeout)]);
+                : returnedPromise
+                      .then(race.fulfill, race.reject)
+                      .then(() => race);
         try {
             promise.then(
                 fulfillValue => {
@@ -68,14 +73,14 @@ module.exports = function track(what, timeout) {
                         tracker.timedout = false;
                         tracker.value = fulfillValue;
                     }
-                    complete(p, tracker);
+                    complete(p, tracker, timer);
                     return null;
                 },
                 reason => {
                     tracker.failed = true;
                     tracker.timedout = false;
                     tracker.error = reason;
-                    complete(p, tracker);
+                    complete(p, tracker, timer);
                     return null;
                 }
             );
