@@ -1,6 +1,6 @@
 {
   "name": "tracking-promise",
-  "version": "1.0.0-dev",
+  "version": "1.0.1",
   "description": "A JavaScript library for tracking the success/failure of a promise without rejecting",
   "keywords": [
     "promise",
