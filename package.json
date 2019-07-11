@@ -1,6 +1,6 @@
 {
   "name": "tracking-promise",
-  "version": "1.0.0",
+  "version": "1.0.0-dev",
   "description": "A JavaScript library for tracking the success/failure of a promise without rejecting",
   "keywords": [
     "promise",
@@ -54,6 +54,7 @@
     "eslint-plugin-promise": "^4.1.1",
     "eslint-plugin-standard": "^4.0.0",
     "husky": "^2.3.0",
+    "lodash": ">=4.17.14",
     "mocha": "^6.1.4",
     "mochawesome": "^4.0.1",
     "node": "^10.9.0",
