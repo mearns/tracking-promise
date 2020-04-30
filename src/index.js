@@ -1,12 +1,21 @@
 const ExtrinsicPromise = require("extrinsic-promises");
 
+/**
+ * Call when the tracking is finished. This will set the status on the tracker and mark it as finished,
+ * and copy the error into the "reason" field. It will also fulfill the tracker with the results.
+ */
 const complete = (p, tracker, timer) => {
     tracker.finished = true;
+    tracker.status =
+        tracker.failed || tracker.timedout ? "rejected" : "fulfilled";
+    tracker.reason = tracker.error;
     p.fulfill({
+        status: tracker.status,
         failed: tracker.failed,
         timedout: tracker.timedout,
         synchronous: tracker.synchronous,
         error: tracker.error,
+        reason: tracker.reason,
         value: tracker.value
     });
     if (timer) {
@@ -22,6 +31,7 @@ module.exports = function track(what, timeout) {
     const tracker = p.hide();
     tracker.finished = false;
     tracker.value = undefined;
+    tracker.reason = undefined;
     tracker.error = undefined;
     tracker.failed = undefined;
     tracker.timedout = undefined;
