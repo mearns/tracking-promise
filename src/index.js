@@ -26,7 +26,44 @@ const complete = (p, tracker, timer) => {
 
 const TIMEOUT = Symbol("timeout");
 
-module.exports = function track(what, timeout) {
+/**
+ * @typedef {object} TrackedResult<T>
+ * @typeparam T The type of value being tracked.
+ * @property {true} finished
+ * @property {boolean} synchronous
+ * @property {boolean} failed
+ * @property {boolean} timedout
+ * @property {"fulfilled"|"rejected"} status Indicates as a string constant whether this was a success or failure, aligned with the Promise.allSettled interface.
+ * @property {T|undefined} value The value that the tracked promise fulfilled with, or the tracked function returned, or the tracked immediate value itself.
+ * @property {Error|undefined} reason The error that the tracked promise rejected with, or the tracked function threw.
+ * @property {Error|undefined} error This is perhaps deprecated; to align with the Promise.allSettled interface, use `reason` instead.
+ */
+
+/**
+ * The value returned by the {@link track} function contains some information about the value being tracked, but also acts as promise which will fulfill
+ * with a {@link TrackedResult} whenever the tracking is complete.
+ * @typedef {object} Tracker<T>
+ * @typeparam T The type of value being tracked.
+ * @property {(onFulfill: (TrackedResult<T>) => (K|Promise<K>), onReject?: (Error) => (K|Promise<K>)) => Promise<K>} then The handler-register for this promise.
+ * @property {boolean} finished
+ * @property {boolean} synchronous
+ * @property {boolean|undefined} failed
+ * @property {boolean|undefined} timedout
+ * @property {"fulfilled"|"rejected"} status Indicates as a string constant whether this was a success or failure, aligned with the Promise.allSettled interface.
+ * @property {T|undefined} value The value that the tracked promise fulfilled with, or the tracked function returned, or the tracked immediate value itself.
+ * @property {Error|undefined} reason The error that the tracked promise rejected with, or the tracked function threw.
+ * @property {Error|undefined} error This is perhaps deprecated; to align with the Promise.allSettled interface, use `reason` instead.
+ */
+
+/**
+ *
+ * @param {Promise<T>|T|() => Promise<T>|() => T} what The thing to track. Either a promise or an immediate value,
+ * or a function that returns either of those.
+ * @param {number?} [timeout] Optionally specify a timeout in milliseconds.
+ *
+ * @returns {Tracker<T>}
+ */
+function track(what, timeout) {
     const p = new ExtrinsicPromise();
     const tracker = p.hide();
     tracker.finished = false;
@@ -105,4 +142,6 @@ module.exports = function track(what, timeout) {
         }
         return tracker;
     }
-};
+}
+
+module.exports = track;
