@@ -16,6 +16,7 @@ const sinon = require("sinon");
 
 class SubjectExpectations {
     constructor(subject) {
+        this.tracker = subject;
         Object.defineProperty(this, "expect", {
             get() {
                 return chai.expect(subject);
@@ -25,6 +26,7 @@ class SubjectExpectations {
 
     toBeFinished() {
         this.expect.to.haveOwnProperty("finished").which.is.true;
+        this.expect.to.haveOwnProperty("status");
         return this;
     }
 
@@ -45,16 +47,26 @@ class SubjectExpectations {
 
     toNotBeFinished() {
         this.expect.to.haveOwnProperty("finished").which.is.false;
+        this.expect.to.not.haveOwnProperty("status");
         return this;
     }
 
     toHaveSucceeded() {
         this.expect.to.haveOwnProperty("failed").which.is.false;
+        this.expect.to.haveOwnProperty("status").which.equals("fulfilled");
+        this.expect.to.haveOwnProperty("value");
         return this;
     }
 
     toHaveFailed() {
         this.expect.to.haveOwnProperty("failed").which.is.true;
+        this.expect.to.haveOwnProperty("status").which.equals("rejected");
+        this.expect.to
+            .haveOwnProperty("reason")
+            .which.deep.equals(this.tracker.error);
+        this.expect.to
+            .haveOwnProperty("error")
+            .which.deep.equals(this.tracker.reason);
         return this;
     }
 
@@ -89,11 +101,15 @@ class SubjectExpectations {
         this.expect.to
             .haveOwnProperty("error")
             .which.satisfies(val => Object.is(val, testError));
+        this.expect.to
+            .haveOwnProperty("reason")
+            .which.satisfies(val => Object.is(val, testError));
         return this;
     }
 
     toHaveErrorUndefined() {
         this.expect.to.haveOwnProperty("error").which.is.undefined;
+        this.expect.to.haveOwnProperty("reason").which.is.undefined;
         return this;
     }
 }

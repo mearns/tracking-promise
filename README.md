@@ -13,6 +13,20 @@ state: whether or not it is finished, whether it succeeded (returned or fulfille
 The `Tracker` object also serves as a promise (a _thenable_) which will fulfill (always) when
 the tracked value finishes, regardless of how it finishes.
 
+## `Promise.allSettled`
+
+This is conceptually similar to the [`Promise.allSettled`](https://github.com/tc39/proposal-promise-allSettled) function slated for inclusion in ES2020, in that both will fulfill regardless of how the given promise settles. As of version 1.1, this package fulfills
+with a value that is compatible with the outcome objects provided by `allSettled`.
+
+The `allSettled` function would
+essentially be a shortcut for `Promise.all(promises.map(track))`, except for the following limitations of `allSettled`:
+
+1. `Promise.allSettled` does not directly support timeout.
+2. `Promise.allSettled` does not provide information to distinguish between promises and immediate values.
+3. `Promise.allSettled` has no polling mechanism (i.e., the `finished` field provided by the tracker).
+
+Many use cases won't need any of these things and so `Promise.allSettled` may work fine for you.
+
 ## Overview
 
 Install however you install npm packages, e.g.:
@@ -91,17 +105,21 @@ Values that are not set upon return from `track` are present but explicitly set 
 All of these fields except for `finished` are also present on the object that the `Tracker` promise fulfills with
 (finished is not needed because the fact that `Tracker` has fulfilled implies that it is finished).
 
-| Field Name             | Set upon Return from `track` | Immediate Values | Synchronous Functions                        | Promises and Async Functions                                                |
-| ---------------------- | ---------------------------- | ---------------- | -------------------------------------------- | --------------------------------------------------------------------------- |
-| `finished`             | yes                          | always `true`    | always `true`                                | `false` until promise settles, then `true`                                  |
-| `synchronous`          | yes                          | always `true`    | always `true`                                | always `false`                                                              |
-| `value` †              | for synchronous only         | the value itself | the returned value                           | the value the promise fulfills with                                         |
-| `error` ‡              | for synchronous only         | never set        | the thrown error                             | the value the promise rejects with                                          |
-| `failed`               | for synchronous only         | always `true`    | `true` if function throws, otherwise `false` | `true` if the promise rejects, otherwise `false`                            |
-| `timedout`<sup>§</sup> | for synchronous only         | always `false`   | always `false`                               | `true` if a timeout argument is given and the promise times out<sup>§</sup> |
+| Field Name             | Set upon Return from `track` | Immediate Values     | Synchronous Functions                                        | Promises and Async Functions                                                |
+| ---------------------- | ---------------------------- | -------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `finished`             | yes                          | always `true`        | always `true`                                                | `false` until promise settles, then `true`                                  |
+| `synchronous`          | yes                          | always `true`        | always `true`                                                | always `false`                                                              |
+| `value` †              | for synchronous only         | the value itself     | the returned value                                           | the value the promise fulfills with                                         |
+| `reason` ‡             | for synchronous only         | never set            | the thrown error                                             | the value the promise rejects with                                          |
+| `error` ‡ \*           | for synchronous only         | never set            | the thrown error                                             | the value the promise rejects with                                          |
+| `failed`               | for synchronous only         | always `false`       | `true` if function throws, otherwise `false`                 | `true` if the promise rejects, otherwise `false`                            |
+| `status`               | for synchronous only         | always `"fulfilled"` | `"rejected"` if the function throws, otherwise `"fulfilled"` | `"rejected"` if the promise rejects, otherwise `"fulfilled"`.               |
+| `timedout`<sup>§</sup> | for synchronous only         | always `false`       | always `false`                                               | `true` if a timeout argument is given and the promise times out<sup>§</sup> |
 
 † - Only given when `failed` is false, otherwise explicitly set to `undefined`. <br />
-‡ - Only given when `failed` is true, otherwise explicitly set to `undefined`. <br />
+‡ - Only given when `failed` is true, otherwise explicitly set to `undefined`. <br /> \
+\* - Note the the `error` field is entirely redundant with the `reason` field; it was superceded by the latter in version 1.1 of this package in order to align with `Promise.allSettled`,
+however both fields will remain in order to maintain compatibility. <br />
 § - See "Timeouts" below for details.
 
 ## Timeouts
