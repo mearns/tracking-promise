@@ -57,6 +57,20 @@ const TIMEOUT = Symbol("timeout");
 
 /**
  *
+ * @param {*} tracker
+ * @param {*} PromiseConstructor
+ */
+function unpack(tracker) {
+    return tracker.then(() => {
+        if (tracker.failed) {
+            throw tracker.reason;
+        }
+        return tracker.value;
+    });
+}
+
+/**
+ *
  * @param {Promise<T>|T|() => Promise<T>|() => T} what The thing to track. Either a promise or an immediate value,
  * or a function that returns either of those.
  * @param {number?} [timeout] Optionally specify a timeout in milliseconds.
@@ -66,6 +80,13 @@ const TIMEOUT = Symbol("timeout");
 function track(what, timeout) {
     const p = new ExtrinsicPromise();
     const tracker = p.hide();
+    tracker.finally = async handler => {
+        const res = await tracker;
+        await handler();
+        return res;
+    };
+    tracker.catch = () => tracker;
+    tracker.unpack = () => unpack(tracker);
     tracker.finished = false;
     tracker.value = undefined;
     tracker.reason = undefined;

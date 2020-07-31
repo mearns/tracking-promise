@@ -1,6 +1,6 @@
 {
   "name": "tracking-promise",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A JavaScript library for tracking the success/failure of a promise without rejecting",
   "keywords": [
     "promise",
@@ -62,7 +62,7 @@
     "prettier": "^1.17.1",
     "pretty-quick": "^1.10.0",
     "sinon": "^7.3.2",
-    "sinon-chai": "^3.3.0"
+    "sinon-chai": "^3.5.0"
   },
   "dependencies": {
     "extrinsic-promises": "^2.1.0"

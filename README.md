@@ -158,3 +158,28 @@ relevant to timeout):
 5. When either promise handler is invoked, if the timer callback has already executed the
    handlers do nothing. Otherwise, the handler will cancel timer `T` and fulfill the `Tracker` promise appropriately
    (not as a timeout).
+
+## API
+
+For the most part, you will just treat a `Tracker` as a thennable for the tracked results; either `await`-ing the `Tracker`
+or using the `then(...)` method. The `Tracker` also provides the following common convenience Promise methods:
+
+| Promise-like method                     | use                                                                                                   |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `then(fulfillHandler, [rejectHandler])` | The standard handler register for a thennable / promise                                               |
+| `catch(rejectHandler)`                  | A convenience method for registering a reject-handler                                                 |
+| `finally(finallyHandler)`               | A convenience method for registering a handler that will not transform the value of the promise chain |
+
+Because the Tracker always fulfills, a reject-handler will never be called, and the `catch` method is actually just
+a near-empty function that returns the Tracker itself.
+
+Note that, as typical, the `finally` method will return a promise for the same value as what the Tracker itself
+fulfills with; it is used for side effects, not for transforming the promise chain. However, if the finallyHandler
+throws or returns a promise that rejects, than the returned promise will reject with the same error.
+
+### Unpacking
+
+You can use the `unpack` method to get a promise that fulfills or rejects according to whether or not the tracked
+thing succeeds or fails, regardless of what type of thing was being tracked. It the tracked thing succeeds, then
+the unpacked promise will fulfill with the `value`; if the tracked thing fails, then then unpacked promise
+will reject with the `reason`.
