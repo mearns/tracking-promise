@@ -545,10 +545,19 @@ describe("tracking-promise", () => {
         getTrackedFactories({ succeeds: true }).forEach(
             ([desc, getTracked]) => {
                 describe(desc, () => {
-                    it("should unroll to a promise for the returned value", async () => {
+                    it("should unroll the tracker to a promise for the returned value", async () => {
                         const testValue = {};
                         const tracker = track(getTracked(testValue));
                         const value = await tracker.unpack();
+                        chai.expect(value).satisfies(val =>
+                            Object.is(val, testValue)
+                        );
+                    });
+
+                    it("should unroll the fulfilled value to a promise for the returned value", async () => {
+                        const testValue = {};
+                        const result = await track(getTracked(testValue));
+                        const value = await result.unpack();
                         chai.expect(value).satisfies(val =>
                             Object.is(val, testValue)
                         );
@@ -560,11 +569,19 @@ describe("tracking-promise", () => {
         getTrackedFactories({ succeeds: false }).forEach(
             ([desc, getTracked]) => {
                 describe(desc, () => {
-                    it("should unroll to a promise that rejects with the error", async () => {
+                    it("should unroll the tracker to a promise that rejects with the error", async () => {
                         const testError = new Error("Test error for unpacking");
                         const tracker = track(getTracked(null, testError));
                         return chai
                             .expect(tracker.unpack())
+                            .to.be.rejectedWith(testError);
+                    });
+
+                    it("should unroll the fulfilled value to a promise that rejects with the error", async () => {
+                        const testError = new Error("Test error for unpacking");
+                        const result = await track(getTracked(null, testError));
+                        return chai
+                            .expect(result.unpack())
                             .to.be.rejectedWith(testError);
                     });
                 });

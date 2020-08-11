@@ -16,7 +16,8 @@ const complete = (p, tracker, timer) => {
         synchronous: tracker.synchronous,
         error: tracker.error,
         reason: tracker.reason,
-        value: tracker.value
+        value: tracker.value,
+        unpack: () => tracker.unpack()
     });
     if (timer) {
         clearTimeout(timer);
