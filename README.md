@@ -13,7 +13,16 @@ state: whether or not it is finished, whether it succeeded (returned or fulfille
 The `Tracker` object also serves as a promise (a _thenable_) which will fulfill (always) when
 the tracked value finishes, regardless of how it finishes.
 
-## `Promise.allSettled`
+## Related
+
+### The _Try_ Pattern
+
+If all you actually care about is making sure you get a fulfillment regardless of how the promise settles,
+you might want to consider using the Try pattern instead, for instance using
+[`Try.fromPromise`](https://mearns.github.io/fp-try/classes/try.html#frompromise) from the
+[fp-try](https://www.npmjs.com/package/fp-try) package.
+
+### `Promise.allSettled`
 
 This is conceptually similar to the [`Promise.allSettled`](https://github.com/tc39/proposal-promise-allSettled) function slated for inclusion in ES2020, in that both will fulfill regardless of how the given promise settles. As of version 1.1, this package fulfills
 with a value that is compatible with the outcome objects provided by `allSettled`.
